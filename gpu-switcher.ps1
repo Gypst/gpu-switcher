@@ -1,30 +1,13 @@
 # Run PowerShell as Administrator
 
+param (
+    [switch]$silenceEnable, # Argument to enable the GPU silently
+    [switch]$silenceDisable  # Argument to disable the GPU silently
+)
+
 # Function to check if the script is running with administrative privileges
 function Test-IsAdmin {
     return ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
-
-# If the script is not running as Administrator, restart it with elevated privileges
-if (-not (Test-IsAdmin)) {
-    # Get the path of the current script
-    $scriptPath = $MyInvocation.MyCommand.Path
-
-    # Restart the script with Administrator privileges
-    Start-Process powershell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
-    exit
-}
-
-# Main script logic below...
-Write-Output "The script is running with Administrator privileges."
-
-# Function to display the selection menu
-function Show-Menu {
-    Clear-Host
-    Write-Output "================ GPU Management Menu ================`n"
-    Write-Output "1. Disable NVIDIA GeForce RTX 3070 Laptop GPU`n"
-    Write-Output "2. Enable NVIDIA GeForce RTX 3070 Laptop GPU`n"
-    Write-Output "3. Exit`n"
 }
 
 # Function to find the target device
@@ -46,48 +29,80 @@ function Toggle-Device {
         if ($Disable) {
             Disable-PnpDevice -InstanceId $InstanceId -Confirm:$false
             Write-Output "Device has been successfully disabled.`n"
-        } else {
+        }
+        else {
             Enable-PnpDevice -InstanceId $InstanceId -Confirm:$false
             Write-Output "Device has been successfully enabled.`n"
         }
-    } catch {
-        Write-Output "Error: Unable to perform the operation. Please run the script as Administrator.`n"
+    }
+    catch {
+        # Handle errors (e.g., insufficient permissions)
+        Write-Output "Error: Unable to perform the operation. Please ensure the script is running as Administrator."
     }
 }
 
-# Main script loop
+# Function to display the selection menu
+function Show-Menu {
+    Clear-Host
+    Write-Output "================ GPU Management Menu ================`n"
+    Write-Output "1. Disable NVIDIA GeForce RTX 3070 Laptop GPU`n"
+    Write-Output "2. Enable NVIDIA GeForce RTX 3070 Laptop GPU`n"
+    Write-Output "3. Exit`n"
+}
+
+# ================ Main script logic ================
+
+# If the script is not running as Administrator, restart it with elevated privileges
+if (-not (Test-IsAdmin)) {
+    # Get the path of the current script and arguments
+    $scriptPath = $MyInvocation.MyCommand.Path
+    $arguments = $MyInvocation.UnboundArguments
+
+    # Restart the script with Administrator privileges and pass the original arguments
+    Start-Process powershell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" $arguments"
+    exit
+}
+
+# Handle silent mode arguments
+if ($silenceEnable -or $silenceDisable) {
+    $device = Get-TargetDevice
+    if (-not $device) {
+        Write-Output "NVIDIA GeForce RTX 3070 Laptop GPU not found."
+        exit
+    }
+
+    if ($silenceEnable) {
+        Toggle-Device -InstanceId $device.InstanceId -Disable $false
+    }
+    elseif ($silenceDisable) {
+        Toggle-Device -InstanceId $device.InstanceId -Disable $true
+    }
+    exit
+}
+
+# Interactive mode (menu-based)
 do {
     Show-Menu
     $choice = Read-Host "Select an action"
 
     switch ($choice) {
         '1' {
-            # Check if the script is running with admin privileges
-            if (-not (Test-IsAdmin)) {
-                Write-Output "Error: This operation requires administrative privileges. Please run the script as Administrator.`n"
-                continue
-            }
-
             # Disable the device
             $device = Get-TargetDevice
             if ($device) {
                 Toggle-Device -InstanceId $device.InstanceId -Disable $true
-            } else {
+            }
+            else {
                 Write-Output "NVIDIA GeForce RTX 3070 Laptop GPU not found.`n"
             }
         }
         '2' {
-            # Check if the script is running with admin privileges
-            if (-not (Test-IsAdmin)) {
-                Write-Output "Error: This operation requires administrative privileges. Please run the script as Administrator.`n"
-                continue
-            }
-
             # Enable the device
             $device = Get-TargetDevice
             if ($device -and $device.Status -eq "Error") {
                 Toggle-Device -InstanceId $device.InstanceId -Disable $false
-            } else {
+            }
+            else {
                 Write-Output "NVIDIA GeForce RTX 3070 Laptop GPU not found or already enabled.`n"
             }
         }
@@ -98,5 +113,5 @@ do {
             Write-Output "Invalid choice. Please select 1, 2, or 3.`n"
         }
     }
-    Start-Sleep -Seconds 3 # Pause for easier reading of messages
+    Start-Sleep -Seconds 1 # Pause for easier reading of messages
 } until ($choice -eq '3')
