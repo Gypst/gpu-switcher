@@ -1,8 +1,8 @@
 # Run PowerShell as Administrator
-
 param (
     [switch]$silenceEnable, # Argument to enable the GPU silently
-    [switch]$silenceDisable  # Argument to disable the GPU silently
+    [switch]$silenceDisable, # Argument to disable the GPU silently
+    [string]$deviceName = "*NVIDIA GeForce RTX 3070 Laptop GPU*"  # Device name (configurable)
 )
 
 # Function to check if the script is running with administrative privileges
@@ -13,7 +13,7 @@ function Test-IsAdmin {
 # Function to find the target device
 function Get-TargetDevice {
     param (
-        [string]$DeviceName = "*NVIDIA GeForce RTX 3070 Laptop GPU*"
+        [string]$DeviceName
     )
     # Search for the device by its friendly name
     return Get-PnpDevice | Where-Object { $_.FriendlyName -like $DeviceName }
@@ -37,17 +37,26 @@ function Toggle-Device {
     }
     catch {
         # Handle errors (e.g., insufficient permissions)
-        Write-Output "Error: Unable to perform the operation. Please ensure the script is running as Administrator."
+        Write-Output "Error: Unable to perform the operation. Please ensure the script is running as Administrator.`nReason: $_"
     }
 }
 
 # Function to display the selection menu
 function Show-Menu {
     Clear-Host
-    Write-Output "================ GPU Management Menu ================`n"
-    Write-Output "1. Disable NVIDIA GeForce RTX 3070 Laptop GPU`n"
-    Write-Output "2. Enable NVIDIA GeForce RTX 3070 Laptop GPU`n"
-    Write-Output "3. Exit`n"
+    $device = Get-TargetDevice -DeviceName $deviceName
+    if ($device) {
+        Write-Output "================ GPU Management Menu ================`n"
+        Write-Output "Current state of '$($device.FriendlyName)': $($device.Status)`n"
+        Write-Output "1. Disable $($device.FriendlyName)"
+        Write-Output "2. Enable $($device.FriendlyName)"
+        Write-Output "3. Exit"
+    }
+    else {
+        Write-Output "Device '$deviceName' not found.`n"
+        Write-Output "1. Retry"
+        Write-Output "2. Exit"
+    }
 }
 
 # ================ Main script logic ================
@@ -65,12 +74,23 @@ if (-not (Test-IsAdmin)) {
 
 # Handle silent mode arguments
 if ($silenceEnable -or $silenceDisable) {
-    $device = Get-TargetDevice
+    $device = Get-TargetDevice -DeviceName $deviceName
     if (-not $device) {
-        Write-Output "NVIDIA GeForce RTX 3070 Laptop GPU not found."
+        Write-Output "Device '$deviceName' not found.`n"
         exit
     }
 
+    # Check if the device is already in the desired state
+    if ($device.Status -eq "OK" -and $silenceDisable) {
+        Write-Output "Device '$($device.FriendlyName)' is already disabled.`n"
+        exit
+    }
+    if ($device.Status -eq "Error" -and $silenceEnable) {
+        Write-Output "Device '$($device.FriendlyName)' is already enabled.`n"
+        exit
+    }
+
+    # Perform the toggle operation
     if ($silenceEnable) {
         Toggle-Device -InstanceId $device.InstanceId -Disable $false
     }
@@ -83,28 +103,34 @@ if ($silenceEnable -or $silenceDisable) {
 # Interactive mode (menu-based)
 do {
     Show-Menu
-    $choice = Read-Host "Select an action"
-
+    $choice = Read-Host "`nSelect an action"
+    
     switch ($choice) {
         '1' {
             # Disable the device
-            $device = Get-TargetDevice
-            if ($device) {
-                Toggle-Device -InstanceId $device.InstanceId -Disable $true
+            $device = Get-TargetDevice -DeviceName $deviceName
+            if (-not $device) {
+                Write-Output "Device '$deviceName' not found.`n"
+                continue
             }
-            else {
-                Write-Output "NVIDIA GeForce RTX 3070 Laptop GPU not found.`n"
+            if ($device.Status -eq "Error") {
+                Write-Output "Device '$($device.FriendlyName)' is already disabled.`n"
+                continue
             }
+            Toggle-Device -InstanceId $device.InstanceId -Disable $true
         }
         '2' {
             # Enable the device
-            $device = Get-TargetDevice
-            if ($device -and $device.Status -eq "Error") {
-                Toggle-Device -InstanceId $device.InstanceId -Disable $false
+            $device = Get-TargetDevice -DeviceName $deviceName
+            if (-not $device) {
+                Write-Output "Device '$deviceName' not found.`n"
+                continue
             }
-            else {
-                Write-Output "NVIDIA GeForce RTX 3070 Laptop GPU not found or already enabled.`n"
+            if ($device.Status -eq "OK") {
+                Write-Output "Device '$($device.FriendlyName)' is already enabled.`n"
+                continue
             }
+            Toggle-Device -InstanceId $device.InstanceId -Disable $false
         }
         '3' {
             Write-Output "Exiting the script.`n"
