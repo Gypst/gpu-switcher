@@ -1,1 +1,1 @@
-.\gpu-switcher.ps1 --silenceDisable
+.\gpu-switcher.ps1 -silenceDisable

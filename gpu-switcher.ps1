@@ -2,7 +2,8 @@
 param (
     [switch]$silenceEnable, # Argument to enable the GPU silently
     [switch]$silenceDisable, # Argument to disable the GPU silently
-    [string]$deviceName = "*NVIDIA GeForce RTX 3070 Laptop GPU*"  # Device name (configurable)
+    [string]$deviceName = "*NVIDIA GeForce RTX 3070 Laptop GPU*", # Device name (configurable)
+    [switch]$debug # Debug mode for additional logging
 )
 
 # Function to check if the script is running with administrative privileges
@@ -16,6 +17,10 @@ function Get-TargetDevice {
         [string]$DeviceName
     )
     # Search for the device by its friendly name
+    if ($debug) {
+        Write-Output "DEBUG: Searching for device with name '$DeviceName'."
+        Start-Sleep -Seconds 2
+    }
     return Get-PnpDevice | Where-Object { $_.FriendlyName -like $DeviceName }
 }
 
@@ -26,6 +31,10 @@ function Toggle-Device {
         [bool]$Disable
     )
     try {
+        if ($debug) {
+            Write-Output "DEBUG: Toggling device with InstanceId '$InstanceId'. Disable: $Disable"
+            Start-Sleep -Seconds 2
+        }
         if ($Disable) {
             Disable-PnpDevice -InstanceId $InstanceId -Confirm:$false
             Write-Output "Device has been successfully disabled.`n"
@@ -63,33 +72,65 @@ function Show-Menu {
 
 # If the script is not running as Administrator, restart it with elevated privileges
 if (-not (Test-IsAdmin)) {
+    if ($debug) {
+        Write-Output "DEBUG: Script is not running as Administrator. Restarting with elevated privileges."
+        Start-Sleep -Seconds 2
+    }
     # Get the path of the current script and arguments
     $scriptPath = $MyInvocation.MyCommand.Path
-    $arguments = $MyInvocation.UnboundArguments
+    $arguments = @()
 
-    # Restart the script with Administrator privileges and pass the original arguments
+    # Rebuild arguments to include switch parameters
+    if ($silenceEnable) { $arguments += "-silenceEnable" }
+    if ($silenceDisable) { $arguments += "-silenceDisable" }
+    if (![string]::IsNullOrWhiteSpace($deviceName)) { $arguments += "-deviceName", "`"$deviceName`"" }
+    if ($debug) { $arguments += "-debug" } # Add debug flag if enabled
+
+    if ($debug) {
+        Write-Output "DEBUG: Arguments passed: $arguments"
+        Start-Sleep -Seconds 2
+    }
     Start-Process powershell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" $arguments"
     exit
 }
 
 # Handle silent mode arguments
+if ($debug) {
+    Write-Output "DEBUG: Checking silent mode arguments."
+    Start-Sleep -Seconds 2
+}
 if ($silenceEnable -or $silenceDisable) {
+    if ($debug) {
+        Write-Output "DEBUG: Entering silent mode."
+        Start-Sleep -Seconds 2
+    }
     $device = Get-TargetDevice -DeviceName $deviceName
     if (-not $device) {
         Write-Output "Device '$deviceName' not found.`n"
+        Start-Sleep -Seconds 2
         exit
     }
 
+    if ($debug) {
+        Write-Output "DEBUG: Device found: $($device.FriendlyName)"
+        Start-Sleep -Seconds 2
+    }
     # Check if the device is already in the desired state
-    if ($device.Status -eq "OK" -and $silenceDisable) {
-        Write-Output "Device '$($device.FriendlyName)' is already disabled.`n"
+    if ($device.Status -eq "OK" -and $silenceEnable) {
+        Write-Output "Device '$($device.FriendlyName)' is already enabled.`n"
+        Start-Sleep -Seconds 2
         exit
     }
-    if ($device.Status -eq "Error" -and $silenceEnable) {
-        Write-Output "Device '$($device.FriendlyName)' is already enabled.`n"
+    if ($device.Status -eq "Error" -and $silenceDisable) {
+        Write-Output "Device '$($device.FriendlyName)' is already disabled.`n"
+        Start-Sleep -Seconds 2
         exit
     }
 
+    if ($debug) {
+        Write-Output "DEBUG: Performing toggle operation."
+        Start-Sleep -Seconds 2
+    }
     # Perform the toggle operation
     if ($silenceEnable) {
         Toggle-Device -InstanceId $device.InstanceId -Disable $false
@@ -101,6 +142,10 @@ if ($silenceEnable -or $silenceDisable) {
 }
 
 # Interactive mode (menu-based)
+if ($debug) {
+    Write-Output "DEBUG: Entering interactive mode."
+    Start-Sleep -Seconds 2
+}
 do {
     Show-Menu
     $choice = Read-Host "`nSelect an action"
@@ -108,6 +153,10 @@ do {
     switch ($choice) {
         '1' {
             # Disable the device
+            if ($debug) {
+                Write-Output "DEBUG: User selected option 1 (Disable)."
+                Start-Sleep -Seconds 2
+            }
             $device = Get-TargetDevice -DeviceName $deviceName
             if (-not $device) {
                 Write-Output "Device '$deviceName' not found.`n"
@@ -121,6 +170,10 @@ do {
         }
         '2' {
             # Enable the device
+            if ($debug) {
+                Write-Output "DEBUG: User selected option 2 (Enable)."
+                Start-Sleep -Seconds 2
+            }
             $device = Get-TargetDevice -DeviceName $deviceName
             if (-not $device) {
                 Write-Output "Device '$deviceName' not found.`n"
