@@ -1,4 +1,5 @@
-Use this instead: https://www.techpowerup.com/forums/threads/dgpu-not-completely-disconnecting-on-lenovo-legion-slim-5-gen-8.312171/
+From this [knowledge](https://www.techpowerup.com/forums/threads/dgpu-not-completely-disconnecting-on-lenovo-legion-slim-5-gen-8.312171/), I found a solution: you need to **kill all Nvidia processes**. After that, the Nvidia containers and updater will restart, but without using the dGPU.
+
 
 ### Parameters
 
