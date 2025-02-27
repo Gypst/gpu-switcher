@@ -1,3 +1,6 @@
+From this [knowledge](https://www.techpowerup.com/forums/threads/dgpu-not-completely-disconnecting-on-lenovo-legion-slim-5-gen-8.312171/), I found a solution: you need to **kill all Nvidia processes**. After that, the Nvidia containers and updater will restart, but without using the dGPU.
+
+
 ### Parameters
 
 This script supports the following parameters to manage GPU devices via PowerShell. You can use these parameters for silent operations or configure the device name dynamically.
