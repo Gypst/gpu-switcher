@@ -1,0 +1,1 @@
+.\TerminateNvidiaProcesses.ps1 -Quiet
