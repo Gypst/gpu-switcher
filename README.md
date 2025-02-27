@@ -1,3 +1,5 @@
+Use this instead: https://www.techpowerup.com/forums/threads/dgpu-not-completely-disconnecting-on-lenovo-legion-slim-5-gen-8.312171/
+
 ### Parameters
 
 This script supports the following parameters to manage GPU devices via PowerShell. You can use these parameters for silent operations or configure the device name dynamically.
