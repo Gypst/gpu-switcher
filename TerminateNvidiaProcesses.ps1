@@ -3,7 +3,7 @@ param (
 )
 
 function Get-TargetProcesses {
-    Get-Process | Where-Object { $_.Name -like "nvcontainer*" -or $_.Name -like "NVDisplay.Container*" }
+    Get-Process | Where-Object { $_.Name -like "nvcontainer*" -or $_.Name -like "NVDisplay.Container*" -or $_.Name -like "NvOAWrapperCache.exe" }
 }
 
 function Terminate-Process {
@@ -37,10 +37,12 @@ function Handle-InteractiveMode {
             foreach ($process in $targetProcesses) {
                 Terminate-Process -process $process
             }
-        } else {
+        }
+        else {
             Write-Output "Operation canceled."
         }
-    } else {
+    }
+    else {
         Write-Output "No target processes were found."
     }
 }
